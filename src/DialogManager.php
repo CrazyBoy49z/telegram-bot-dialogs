@@ -6,6 +6,7 @@ use KootLabs\TelegramBotDialogs\Storages\Store;
 use Telegram\Bot\Api;
 use Telegram\Bot\Objects\Message;
 use Telegram\Bot\Objects\Update;
+use Illuminate\Support\Collection;
 
 final class DialogManager
 {
@@ -27,6 +28,7 @@ final class DialogManager
      */
     public function activate(Dialog $dialog): void
     {
+
         $this->storeDialogState($dialog);
     }
 
@@ -42,9 +44,7 @@ final class DialogManager
             return null;
         }
 
-        $message = $update->getMessage();
-        assert($message instanceof \Telegram\Bot\Objects\Message);
-        $key = $this->generateDialogKey($message);
+        $key = $this->generateDialogKey($update);
 
         $dialog = $this->readDialogState($key);
         $dialog->setBot($this->bot);
@@ -68,7 +68,6 @@ final class DialogManager
 
         if ($dialog->isEnd()) {
             $this->store->delete($dialog->getDialogKey());
-            $dialog->proceed($update);
         } else {
             $this->storeDialogState($dialog);
         }
@@ -77,9 +76,8 @@ final class DialogManager
     /** Whether Dialog exist for a given Update. */
     public function exists(Update $update): bool
     {
-        $message = $update->getMessage();
-        $key = $this->generateDialogKey($message);
-        
+        $key = $this->generateDialogKey($update);
+
         return $key && $this->store->has($key);
     }
 
@@ -90,20 +88,21 @@ final class DialogManager
     }
 
     /** Restore Dialog. */
-    private function readDialogState(int $chatId): Dialog
+    private function readDialogState($key): Dialog
     {
-        return $this->store->get($chatId);
+        return $this->store->get($key);
     }
 
-    private function generateDialogKey(Message|Collection $message)
+    private function generateDialogKey(Update $update)
     {
-        $userId = $message->get('from.id', $message->get('user.id'));
-        $chatId = $message->get('chat.id', $message->get('user_chat_id'));
+        $message = $update->getMessage();
+
+        $userId = $message->get('from.id', $message->get('user.id', $update->getMessage()->from->id));
+        $chatId = $message->get('chat.id', $message->get('user_chat_id', $update->getChat()->id));
 
         if (! $userId && ! $chatId) {
             return null;
         }
-
 
         return $userId.'-'.$chatId;
     }
