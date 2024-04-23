@@ -28,7 +28,6 @@ final class DialogManager
      */
     public function activate(Dialog $dialog): void
     {
-
         $this->storeDialogState($dialog);
     }
 
@@ -93,17 +92,8 @@ final class DialogManager
         return $this->store->get($key);
     }
 
-    private function generateDialogKey(Update $update)
+    private function generateDialogKey(Update $update): string|null
     {
-        $message = $update->getMessage();
-
-        $userId = $message->get('from.id', $message->get('user.id', $update->getMessage()->from->id));
-        $chatId = $message->get('chat.id', $message->get('user_chat_id', $update->getChat()->id));
-
-        if (! $userId && ! $chatId) {
-            return null;
-        }
-
-        return $userId.'-'.$chatId;
+        return implode('-', [$update->getMessage()->from->id,  $update->getChat()->id]) ?: null;
     }
 }
