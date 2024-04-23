@@ -11,6 +11,8 @@ abstract class Dialog
 {
     protected int $chat_id;
 
+    protected int $userId;
+
     /** @var array<string, mixed> Key-value storage to store data between steps. */
     protected array $memory = [];
 
@@ -29,9 +31,14 @@ abstract class Dialog
     /** @var int|null Index of the next step that set manually using jump() method. */
     private ?int $afterProceedJumpToIndex = null;
 
-    public function __construct(int $chatId, Api $bot = null)
+    public function __construct(Update $update, Api $bot = null)
     {
+        $message = $update->getMessage();
+
         $this->chat_id = $chatId;
+
+        $this->userId = $message->from->id;
+        
         if ($bot) {
             $this->bot = $bot;
         }
@@ -179,6 +186,12 @@ abstract class Dialog
         return $this->chat_id;
     }
 
+    
+    final public function getUserId(): ?int
+    {
+        return $this->userId;
+    }
+
     /** Get a number of seconds to store state of the Dialog after latest activity on it. */
     final public function ttl(): int
     {
@@ -226,8 +239,19 @@ abstract class Dialog
     {
         return [
             'chat_id' => $this->getChatId(),
+            'userId' => $this->getUserId(),
             'next' => $this->next,
             'memory' => $this->memory,
         ];
+    }
+
+    public function getDialogKey(): string
+    {
+        return $this->getUserId().'-'.$this->getChatId();
+    }
+
+    public function getMemoryByKey(string $key): mixed
+    {
+        return $this->memory[$key];
     }
 }
